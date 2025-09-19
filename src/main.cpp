@@ -1,0 +1,172 @@
+#include <raylib.h>
+#include <vector>
+
+using namespace std;
+
+float Distance(Vector2 a, Vector2 b);
+bool lineToLineIntersection(Vector2 poly1Init, Vector2 poly1End, Vector2 poly2Init, Vector2 poly2End, Vector2& point);
+
+struct Line
+{
+	Vector2 init;
+	Vector2 end;
+};
+
+struct Polygon
+{
+	vector<Line> lines;
+	Vector2 latestPoint = { numeric_limits<float>::max(), numeric_limits<float>::max() };
+	bool closed = false;
+};
+
+int main()
+{
+	InitWindow(800, 600, "TP1 Algebra - Poligonos Irregulares");
+	SetTargetFPS(60);
+
+	vector<Polygon> polygons;
+	polygons.push_back(Polygon());
+
+	while (!WindowShouldClose())
+	{
+		Vector2 mouse = GetMousePosition();
+
+		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+		{
+			auto& currentPoly = polygons.back();
+			if (currentPoly.lines.empty())
+			{
+				Line currentline;
+
+				currentline.init = mouse;
+				currentPoly.lines.push_back(currentline);
+			}
+			else if (currentPoly.lines.size() == 1 && currentPoly.latestPoint.x == numeric_limits<float>::max() && currentPoly.latestPoint.y == numeric_limits<float>::max())
+			{
+				auto& currentline = currentPoly.lines.back();
+				currentline.end = mouse;
+				currentPoly.latestPoint = mouse;
+			}
+			else
+			{
+				if (currentPoly.lines.size() >= 3)
+				{
+					Vector2 firstVertex = currentPoly.lines[0].init;
+					if (Distance(mouse, firstVertex) < 10.0f)
+					{
+						currentPoly.closed = true;
+						Line currentline;
+						currentline.init = currentPoly.latestPoint;
+						currentline.end = firstVertex;
+						currentPoly.latestPoint = currentline.end;
+						currentPoly.lines.push_back(currentline);
+						polygons.push_back(Polygon());
+					}
+					else
+					{
+						Line currentline;
+						currentline.init = currentPoly.latestPoint;
+						currentline.end = mouse;
+						currentPoly.latestPoint = currentline.end;
+						currentPoly.lines.push_back(currentline);
+					}
+				}
+				else
+				{
+					Line currentline;
+					currentline.init = currentPoly.latestPoint;
+					currentline.end = mouse;
+					currentPoly.latestPoint = currentline.end;
+					currentPoly.lines.push_back(currentline);
+				}
+			}
+		}
+
+		if (IsMouseButtonDown(MOUSE_RIGHT_BUTTON))
+		{
+
+		}
+
+		BeginDrawing();
+		ClearBackground(BLACK);
+
+		for (auto& poly : polygons)
+		{
+			if (poly.latestPoint.x != numeric_limits<float>::max() && poly.latestPoint.y != numeric_limits<float>::max())
+			{
+				for (int i = 0; i < poly.lines.size(); i++)
+				{
+					DrawLineV(poly.lines[i].init, poly.lines[i].end, WHITE);
+				}
+			}
+			for (auto& v : poly.lines)
+			{
+				DrawCircleV(v.init, 4, YELLOW);
+
+				if (poly.latestPoint.x != numeric_limits<float>::max() && poly.latestPoint.y != numeric_limits<float>::max())
+				{
+					DrawCircleV(v.end, 4, YELLOW);
+				}
+			}
+		}
+		for (int i = 0; i < polygons.size(); i++)
+		{
+			for (int j = 0; j < polygons.size(); j++)
+			{
+				if (i == j)
+				{
+					continue;
+				}
+
+				for (int k = 0; k < polygons[i].lines.size(); k++)
+				{
+					for (int l = 0; l < polygons[j].lines.size(); l++)
+					{
+						Vector2 collisionPoint;
+
+						if (lineToLineIntersection(polygons[i].lines[k].init, polygons[i].lines[k].end, polygons[j].lines[l].init, polygons[j].lines[l].end, collisionPoint))
+							DrawCircleV(collisionPoint, 4, RED);
+					}
+				}
+			}
+		}
+
+		EndDrawing();
+	}
+
+	CloseWindow();
+	return 0;
+}
+
+float Distance(Vector2 a, Vector2 b)
+{
+	float dx = a.x - b.x;
+	float dy = a.y - b.y;
+
+	return sqrtf(dx * dx + dy * dy);
+}
+
+bool lineToLineIntersection(Vector2 poly1Init, Vector2 poly1End, Vector2 poly2Init, Vector2 poly2End, Vector2& point) //poly1Init = x1,y1, polyEnd = x2, y2, poly2Init = x3,y3, polyEnd = x4,y4
+{
+	float a1 = poly1End.y - poly1Init.y;
+	float b1 = poly1Init.x - poly1End.x;
+	float c1 = a1 * poly1Init.x + b1 * poly1Init.y;
+	float a2 = poly2End.y - poly2Init.y;
+	float b2 = poly2Init.x - poly2End.x;
+	float c2 = a2 * poly2Init.x + b2 * poly2Init.y;
+	float determinante = a1 * b2 - a2 * b1;
+
+	if (determinante != 0)
+	{
+		float x = (b2 * c1 - b1 * c2) / determinante;
+		float y = (a1 * c2 - a2 * c1) / determinante;
+		point.x = x;
+		point.y = y;
+		if (x >= min(poly1Init.x, poly1End.x) && x <= max(poly1Init.x, poly1End.x) &&
+			x >= min(poly2Init.x, poly2End.x) && x <= max(poly2Init.x, poly2End.x) &&
+			y >= min(poly1Init.y, poly1End.y) && y <= max(poly1Init.y, poly1End.y) &&
+			y >= min(poly2Init.y, poly2End.y) && y <= max(poly2Init.y, poly2End.y))
+			return true;
+	}
+	return false;
+}
