@@ -79,24 +79,36 @@ int main()
 				if (currentPoly.lines.size() >= 2)
 				{
 					Vector2 firstVertex = currentPoly.lines[0].init;
-					if (Distance(mouse, firstVertex) < 50.0f)
+					Line currentline;
+					currentline.init = currentPoly.latestPoint;
+					currentline.end = mouse;
+
+					bool hasCollision = false;
+					Vector2 point = { 0,0 };
+
+					for (int i = 0; i < currentPoly.lines.size() - 1; i++)
 					{
-						//currentPoly.latestPoint = firstVertex;
-						currentPoly.closed = true;
-						Line currentline;
-						currentline.init = currentPoly.latestPoint;
-						currentline.end = firstVertex;
-						currentPoly.latestPoint = currentline.end;
-						currentPoly.lines.push_back(currentline);
-						polygons.push_back(Polygon());
+						if (lineToLineIntersection(currentPoly.lines[i].init, currentPoly.lines[i].end, currentline.init, currentline.end, point))
+						{
+							hasCollision = true;
+						}
 					}
-					else
+					if (!hasCollision)
 					{
-						Line currentline;
-						currentline.init = currentPoly.latestPoint;
-						currentline.end = mouse;
-						currentPoly.latestPoint = currentline.end;
-						currentPoly.lines.push_back(currentline);
+						if (Distance(mouse, firstVertex) < 50.0f)
+						{
+							//currentPoly.latestPoint = firstVertex;
+							currentPoly.closed = true;
+							currentline.end = firstVertex;
+							currentPoly.latestPoint = currentline.end;
+							currentPoly.lines.push_back(currentline);
+							polygons.push_back(Polygon());
+						}
+						else
+						{
+							currentPoly.latestPoint = currentline.end;
+							currentPoly.lines.push_back(currentline);
+						}
 					}
 				}
 				else
@@ -173,7 +185,9 @@ int main()
 						Vector2 collisionPoint;
 
 						if (lineToLineIntersection(polygons[i].lines[k].init, polygons[i].lines[k].end, polygons[j].lines[l].init, polygons[j].lines[l].end, collisionPoint))
+						{
 							DrawCircleV(collisionPoint, 4, RED);
+						}
 					}
 				}
 			}
