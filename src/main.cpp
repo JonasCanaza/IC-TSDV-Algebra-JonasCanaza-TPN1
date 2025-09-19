@@ -47,7 +47,7 @@ int main()
 	polygons.push_back(Polygon());
 
 	Polygon* selectedPolygon = nullptr;
-
+	bool canDraw = true;
 	while (!WindowShouldClose())
 	{
 		lastMousePos = mouse;
@@ -57,7 +57,7 @@ int main()
 
 		cursor.position = mouse;
 
-		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && canDraw)
 		{
 			Polygon& currentPoly = polygons.back();
 			if (currentPoly.lines.empty())
@@ -127,10 +127,12 @@ int main()
 			if (selectedPolygon == nullptr)
 			{
 				selectedPolygon = polygonSelected(cursor, polygons);
+				canDraw = false;
 			}
 			else
 			{
 				selectedPolygon = nullptr;
+				canDraw = true;
 			}
 		}
 
