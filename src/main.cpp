@@ -34,6 +34,7 @@ Polygon* polygonSelected(Cursor cursor, vector<Polygon>& polygons);
 
 int main()
 {
+	SetWindowState(FLAG_WINDOW_RESIZABLE);
 	InitWindow(800, 600, "TP1 Algebra - Poligonos Irregulares");
 	SetTargetFPS(60);
 
@@ -64,6 +65,7 @@ int main()
 				Line currentline;
 
 				currentline.init = mouse;
+				currentline.end = mouse;
 				currentPoly.lines.push_back(currentline);
 			}
 			else if (currentPoly.lines.size() == 1 && currentPoly.latestPoint.x == numeric_limits<float>::max() && currentPoly.latestPoint.y == numeric_limits<float>::max())
@@ -74,10 +76,10 @@ int main()
 			}
 			else
 			{
-				if (currentPoly.lines.size() >= 3)
+				if (currentPoly.lines.size() >= 2)
 				{
 					Vector2 firstVertex = currentPoly.lines[0].init;
-					if (Distance(mouse, firstVertex) < 10.0f)
+					if (Distance(mouse, firstVertex) < 50.0f)
 					{
 						//currentPoly.latestPoint = firstVertex;
 						currentPoly.closed = true;
@@ -186,10 +188,10 @@ int main()
 
 float Distance(Vector2 a, Vector2 b)
 {
-	float dx = a.x - b.x;
-	float dy = a.y - b.y;
+	float dx = abs(a.x) - abs(b.x);
+	float dy = abs(a.y) - abs(b.y);
 
-	return sqrtf(dx * dx + dy * dy);
+	return sqrtf((dx * dx) + (dy * dy));
 }
 
 bool lineToLineIntersection(Vector2 poly1Init, Vector2 poly1End, Vector2 poly2Init, Vector2 poly2End, Vector2& point) //poly1Init = x1,y1, polyEnd = x2, y2, poly2Init = x3,y3, polyEnd = x4,y4
@@ -225,7 +227,10 @@ Polygon* polygonSelected(Cursor cursor, vector<Polygon>& polygons)
 		{
 			if (checkCollisionLineCircle(cursor.position, polygons[i].lines[j].init, polygons[i].lines[j].end, cursor.radius))
 			{
-				return &polygons[i];
+				if (polygons[i].closed)
+				{
+					return &polygons[i];
+				}
 			}
 		}
 	}
@@ -264,7 +269,7 @@ bool checkCollisionLineCircle(Vector2 circlePos, Vector2 pointPos1, Vector2 poin
 	Vector2 closests = { pointPos1.x + (dot * pointPos2.x - pointPos1.x), pointPos1.y + (dot * (pointPos2.y - pointPos1.y)) };
 
 	bool onSegment = linePoint(pointPos1, pointPos2, closests);
-	
+
 	if (!onSegment)
 	{
 		return false;
@@ -289,9 +294,9 @@ bool linePoint(Vector2 linePoint1, Vector2 linePoint2, Vector2 linePoint3)
 
 	float lineLen = sqrt(((abs(linePoint1.x - linePoint2.x)) * (abs(linePoint1.x - linePoint2.x))) + ((abs(linePoint1.y - linePoint2.y)) * (abs(linePoint1.y - linePoint2.y))));
 
-	float buffer = 0.1;   
+	float buffer = 0.1;
 
-	if (d1 + d2 >= lineLen - buffer && d1 + d2 <= lineLen + buffer) 
+	if (d1 + d2 >= lineLen - buffer && d1 + d2 <= lineLen + buffer)
 	{
 		return true;
 	}
