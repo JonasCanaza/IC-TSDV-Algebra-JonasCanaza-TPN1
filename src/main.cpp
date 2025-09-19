@@ -1,10 +1,8 @@
 #include <raylib.h>
 #include <vector>
+#include <iostream>
 
 using namespace std;
-
-float Distance(Vector2 a, Vector2 b);
-bool lineToLineIntersection(Vector2 poly1Init, Vector2 poly1End, Vector2 poly2Init, Vector2 poly2End, Vector2& point);
 
 struct Line
 {
@@ -19,21 +17,48 @@ struct Polygon
 	bool closed = false;
 };
 
+struct Cursor
+{
+	float radius = 5.0f;
+	Vector2 position;
+};
+
+float Distance(Vector2 a, Vector2 b);
+
+bool lineToLineIntersection(Vector2 poly1Init, Vector2 poly1End, Vector2 poly2Init, Vector2 poly2End, Vector2& point);
+bool checkCollisionPointCircle(Vector2 circlePos, Vector2 pointPos, float radius);
+bool checkCollisionLineCircle(Vector2 circlePos, Vector2 pointPos1, Vector2 pointPos2, float radius);
+bool linePoint(Vector2 linePoint1, Vector2 linePoint2, Vector2 linePoint3);
+
+Polygon* polygonSelected(Cursor cursor, vector<Polygon>& polygons);
+
 int main()
 {
 	InitWindow(800, 600, "TP1 Algebra - Poligonos Irregulares");
 	SetTargetFPS(60);
 
+	Cursor cursor;
+
+	Vector2 mouse = { 0,0 };
+	Vector2 lastMousePos = { 0,0 };
+
 	vector<Polygon> polygons;
 	polygons.push_back(Polygon());
 
+	Polygon* selectedPolygon = nullptr;
+
 	while (!WindowShouldClose())
 	{
-		Vector2 mouse = GetMousePosition();
+		lastMousePos = mouse;
+		mouse = GetMousePosition();
+
+		Vector2 deltaMouse = { mouse.x - lastMousePos.x, mouse.y - lastMousePos.y };
+
+		cursor.position = mouse;
 
 		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
 		{
-			auto& currentPoly = polygons.back();
+			Polygon& currentPoly = polygons.back();
 			if (currentPoly.lines.empty())
 			{
 				Line currentline;
@@ -43,7 +68,7 @@ int main()
 			}
 			else if (currentPoly.lines.size() == 1 && currentPoly.latestPoint.x == numeric_limits<float>::max() && currentPoly.latestPoint.y == numeric_limits<float>::max())
 			{
-				auto& currentline = currentPoly.lines.back();
+				Line& currentline = currentPoly.lines.back();
 				currentline.end = mouse;
 				currentPoly.latestPoint = mouse;
 			}
@@ -54,6 +79,7 @@ int main()
 					Vector2 firstVertex = currentPoly.lines[0].init;
 					if (Distance(mouse, firstVertex) < 10.0f)
 					{
+						//currentPoly.latestPoint = firstVertex;
 						currentPoly.closed = true;
 						Line currentline;
 						currentline.init = currentPoly.latestPoint;
@@ -82,15 +108,35 @@ int main()
 			}
 		}
 
-		if (IsMouseButtonDown(MOUSE_RIGHT_BUTTON))
+		if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON))
 		{
+			if (selectedPolygon == nullptr)
+			{
+				selectedPolygon = polygonSelected(cursor, polygons);
+			}
+			else
+			{
+				selectedPolygon = nullptr;
+			}
+		}
 
+		if (selectedPolygon != nullptr)
+		{
+			for (int i = 0; i < (*selectedPolygon).lines.size(); i++)
+			{
+
+				(*selectedPolygon).lines[i].init.x += deltaMouse.x;
+				(*selectedPolygon).lines[i].init.y += deltaMouse.y;
+
+				(*selectedPolygon).lines[i].end.x += deltaMouse.x;
+				(*selectedPolygon).lines[i].end.y += deltaMouse.y;
+			}
 		}
 
 		BeginDrawing();
 		ClearBackground(BLACK);
 
-		for (auto& poly : polygons)
+		for (Polygon& poly : polygons)
 		{
 			if (poly.latestPoint.x != numeric_limits<float>::max() && poly.latestPoint.y != numeric_limits<float>::max())
 			{
@@ -99,7 +145,7 @@ int main()
 					DrawLineV(poly.lines[i].init, poly.lines[i].end, WHITE);
 				}
 			}
-			for (auto& v : poly.lines)
+			for (Line& v : poly.lines)
 			{
 				DrawCircleV(v.init, 4, YELLOW);
 
@@ -167,6 +213,87 @@ bool lineToLineIntersection(Vector2 poly1Init, Vector2 poly1End, Vector2 poly2In
 			y >= min(poly1Init.y, poly1End.y) && y <= max(poly1Init.y, poly1End.y) &&
 			y >= min(poly2Init.y, poly2End.y) && y <= max(poly2Init.y, poly2End.y))
 			return true;
+	}
+	return false;
+}
+
+Polygon* polygonSelected(Cursor cursor, vector<Polygon>& polygons)
+{
+	for (int i = 0; i < polygons.size(); i++)
+	{
+		for (int j = 0; j < polygons[i].lines.size(); j++)
+		{
+			if (checkCollisionLineCircle(cursor.position, polygons[i].lines[j].init, polygons[i].lines[j].end, cursor.radius))
+			{
+				return &polygons[i];
+			}
+		}
+	}
+	return nullptr;
+}
+
+bool checkCollisionPointCircle(Vector2 circlePos, Vector2 pointPos, float radius)
+{
+	float distX = pointPos.x - circlePos.x;
+	float distY = pointPos.y - circlePos.y;
+	float distance = sqrt((distX * distX) + (distY * distY));
+
+	if (distance <= radius)
+	{
+		return true;
+	}
+	return false;
+}
+
+bool checkCollisionLineCircle(Vector2 circlePos, Vector2 pointPos1, Vector2 pointPos2, float radius)
+{
+	bool inside1 = checkCollisionPointCircle(circlePos, pointPos1, radius);
+	bool inside2 = checkCollisionPointCircle(circlePos, pointPos2, radius);
+
+	if (inside1 || inside2)
+	{
+		return true;
+	}
+
+	float distX = pointPos1.x - pointPos2.x;
+	float distY = pointPos1.y - pointPos2.y;
+	float len = sqrt((distX * distX) + (distY * distY));
+
+	float dot = (((circlePos.x - pointPos1.x) * (pointPos2.x - pointPos1.x)) + ((circlePos.y - pointPos1.y) * (pointPos2.y - pointPos1.y))) / pow(len, 2);
+
+	Vector2 closests = { pointPos1.x + (dot * pointPos2.x - pointPos1.x), pointPos1.y + (dot * (pointPos2.y - pointPos1.y)) };
+
+	bool onSegment = linePoint(pointPos1, pointPos2, closests);
+	
+	if (!onSegment)
+	{
+		return false;
+	}
+
+	distX = closests.x - circlePos.x;
+	distY = closests.y - circlePos.y;
+
+	float distance = sqrt((distX * distX) + (distY * distY));
+
+	if (distance <= radius)
+	{
+		return true;
+	}
+	return false;
+}
+
+bool linePoint(Vector2 linePoint1, Vector2 linePoint2, Vector2 linePoint3)
+{
+	float d1 = sqrt(((abs(linePoint3.x - linePoint1.x)) * (abs(linePoint3.x - linePoint1.x))) + ((abs(linePoint3.y - linePoint1.y)) * (abs(linePoint3.y - linePoint1.y))));
+	float d2 = sqrt(((abs(linePoint3.x - linePoint2.x)) * (abs(linePoint3.x - linePoint2.x))) + ((abs(linePoint3.y - linePoint2.y)) * (abs(linePoint3.x - linePoint2.x))));
+
+	float lineLen = sqrt(((abs(linePoint1.x - linePoint2.x)) * (abs(linePoint1.x - linePoint2.x))) + ((abs(linePoint1.y - linePoint2.y)) * (abs(linePoint1.y - linePoint2.y))));
+
+	float buffer = 0.1;   
+
+	if (d1 + d2 >= lineLen - buffer && d1 + d2 <= lineLen + buffer) 
+	{
+		return true;
 	}
 	return false;
 }
